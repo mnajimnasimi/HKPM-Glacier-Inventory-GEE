@@ -648,4 +648,4 @@ INPUT: Landsat Surface Reflectance Composite (Aug 15 - Oct 31)
 ---
 
 *Document prepared in support of the Afghanistan Glacier Inventory Project*
-*Technical University of Munich (TUM) / University of Lausanne (UNIL)*
+*Technical University of Munich (TUM)*
