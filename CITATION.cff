@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this glacier-inventory script or the resulting inventory, please cite it as below."
+type: software
+title: "HKPM Glacier Inventory - Google Earth Engine script"
+version: 1.0.0
+date-released: "2026-08-15"
+authors:
+  - family-names: "Nasimi"
+    given-names: "Mohammad Najim"
+    affiliation: "Chair of Hydrology and River Basin Management, Technical University of Munich"
+    email: "najim.nasimi@tum.de"
+repository-code: "https://github.com/mnajimnasimi/HKPM-Glacier-Inventory-GEE"
+license: GPL-3.0
+keywords:
+  - glacier inventory
+  - Google Earth Engine
+  - Landsat
+  - debris-covered ice
+  - NDSI
+  - Afghanistan
+  - Hindu Kush
+  - Pamir
