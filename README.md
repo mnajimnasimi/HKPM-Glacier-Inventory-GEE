@@ -1,68 +1,83 @@
 # HKPM Glacier Inventory — Google Earth Engine Script
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21966643.svg)](https://doi.org/10.5281/zenodo.21966643)
 
-Calibrated Google Earth Engine (GEE) script for a **conservative
-multi-temporal glacier inventory** (Landsat, 1986–2025), developed for the
-Afghanistan Hindu Kush–Pamir and used to build the glacier forcing of the
+Google Earth Engine (GEE) scripts for a **multi-temporal glacier inventory**
+from the Landsat record (14 epochs, 1986–2025), developed for Afghanistan and
+the adjoining headwaters of the Hindu Kush and Pamir, and used for the ice
+areas of the glacier module of the
 [HKPM-HM hydrological model](https://github.com/mnajimnasimi/HKPM-HM).
 
-The classifier maps **snow**, **clean ice**, and **debris-covered ice**
-with a conservative rock-exclusion logic:
+The method classifies every Landsat scene on its own and maps the part that
+stays snow or ice through the late summers of an epoch:
 
-- Snow: NDSI > 0.5 **and** SWIR < 0.15 **and** Blue > 0.25 (must be bright)
-- Clean ice: stricter thresholds plus rock-exclusion masks
-  (rocks: SWIR > 0.18, NIR/SWIR < 1.3; very bright or very dark pixels
-  are excluded)
-- Debris-covered ice: thermal-band based (Landsat 8/9, i.e. from 2013
-  onward)
-- Larger minimum mapping units to suppress noise; morphological cleaning
+- **Scenes**: Landsat 5, 7, 8 and 9, Collection 2 Level-2 surface reflectance,
+  1 August to 30 September, scene cloud cover below 60 %.
+- **Clean ice**: a pixel that is snow or ice (NDSI ≥ 0.4) in at least 75 % of
+  its cloud-free observations of the epoch, with at least two observations,
+  between 3,500 and 7,500 m, outside permanent water. Seasonal snow is
+  present in only part of the observations and drops out.
+- **Debris-covered ice**: the part of the RGI 7.0 glacier outlines that is not
+  clean ice and has a slope of 25° or less.
+- **Uncertainty**: persistence thresholds of 50 % and 90 % give the upper and
+  lower bound of the clean-ice area; half a pixel on the outline gives the
+  boundary uncertainty.
 
 ## Contents
 
 | File / folder | Purpose |
 |---|---|
-| `Glacier_Mapping_GEE_Script.js` | The Earth Engine script (paste into the GEE Code Editor) |
-| `Study_Area_Boundary/` | **Required.** Boundary shapefile defining where the inventory is made (the Afghanistan glacier-belt boundary used in the paper) |
-| `RGI_Reference_Glaciers/` | *Optional.* RGI-style reference inventory for visual comparison and a reference area total |
-| `Afghanistan_Full_Boundary/` | *Optional.* Full national boundary, as a ready alternative study area |
-| `docs/Glacier_Inventory_User_Guide_and_Workflow.pdf` | Full user guide and workflow (ESM 1 of the paper) |
-| `docs/Scientific_Background.md` | Literature review and threshold justification for every classification rule |
+| `Glacier_Mapping_GEE_Script.js` | The mapping script (paste into the GEE Code Editor); one run maps one epoch |
+| `Inventory_Statistics_GEE_Script.js` | Exports the static image (RGI 7.0 share and elevation per 90 m cell) and prints the sums of an epoch for Afghanistan and for the mapping rectangle |
+| `zonal_statistics/` | Python scripts for the areas per catchment and elevation band (`zonal.py`) and for the table per epoch (`make_epochs.py`) |
+| `docs/Glacier_Inventory_User_Guide_and_Workflow.pdf` | User guide and workflow (ESM 1 of the paper) |
+| `docs/Scientific_Background.md` | Background of the method and reasons for every setting |
+| `Afghanistan_Full_Boundary/` | National boundary, used for the sums of Afghanistan |
+| `RGI_Reference_Glaciers/` | *Optional.* RGI 7.0 outlines of Afghanistan as a shapefile, for comparison in a GIS |
+| `Study_Area_Boundary/` | *Optional.* Polygon around the glacier belt of Afghanistan, for display or clipping in a GIS; the scripts do not need it |
 
 ## How to run
 
-1. **Upload the study-area boundary as an Earth Engine asset**
-   (GEE Code Editor → Assets → New → Shape files; upload all files of
-   `Study_Area_Boundary/` together) and copy the resulting asset path.
-2. Open `Glacier_Mapping_GEE_Script.js` in the Code Editor and set, near
-   the top:
+1. Open `Glacier_Mapping_GEE_Script.js` in the Code Editor and set, in block 1:
    ```js
-   var STUDY_AREA_ASSET = '<your boundary asset path>';
-   var PROCESS_YEAR     = 2025;   // any year; runs on a 3-year window
+   var MID_YEAR = 2002;          // mid-year of the epoch (1987, 1990, ..., 2023) or the single year (2025)
+   var HALF     = 1;             // 1 = three-year epoch, 0 = single year
+   var ASSET_ROOT = 'users/your_user_name/HKPM_inventory';   // your own asset folder
    ```
-3. Click **Run**. Map layers and printed areas appear in the Console; use
-   the **Tasks** tab to export the polygons and rasters to Google Drive.
+2. Click **Run**. The console prints the number of scenes and the areas of a
+   test region; the map shows RGI 7.0, clean ice and debris-covered ice.
+3. Start the export tasks in the **Tasks** tab: the polygons (shapefiles, to
+   Google Drive) and a 90 m image with the area fraction of every class (to
+   your asset folder).
+4. For the areas per epoch, upload `Afghanistan_Full_Boundary/` as a table
+   asset and run `Inventory_Statistics_GEE_Script.js` (static image once,
+   sums for every epoch). Save the lines that it prints as
+   `zonal_statistics/out/gee_national.csv` and run
+   `zonal_statistics/make_epochs.py`.
+5. For the areas per catchment and elevation band, download the static image
+   and, for every epoch, the bands `clean`, `clean_lo`, `clean_hi`, `debris`,
+   `edge`, `ov` and `nobs_x5` of the 90 m image as GeoTIFF to
+   `zonal_statistics/dl/` (`static_90m.tif`, `inv90_<epoch>.tif`), put one
+   polygon shapefile per catchment into `zonal_statistics/catchments/` and run
+   `zonal_statistics/zonal.py` (Python with numpy, pandas, geopandas and
+   rasterio). The user guide describes every step.
 
-To map a smaller or different region, simply upload another boundary and
-point `STUDY_AREA_ASSET` at it — nothing else needs to change.
-
-To overlay a reference inventory (e.g. RGI 7.0), upload
-`RGI_Reference_Glaciers/` as an asset and set:
-
-```js
-var USE_RGI_REFERENCE = true;
-var RGI_ASSET         = '<reference asset path>';
-var RGI_AREA_FIELD    = 'area_km2';
-```
+The mapping script needs no upload. RGI 7.0 is read from the public Earth
+Engine community catalogue, the elevation from SRTM, permanent water from the
+JRC Global Surface Water layer. The mapping rectangle (67.4–75.1° E,
+34.2–38.55° N) is set in the script and can be changed there.
 
 ## Notes
 
-- Debris-covered ice is mapped only for years from 2013 onward (requires
-  the Landsat 8/9 thermal band).
-- The default inventory cadence is 3-yearly (2000, 2003, …, 2024); any
-  individual year can also be mapped.
-- Thresholds, indices, and validation are documented in
-  `docs/Scientific_Background.md` and in the user guide.
+- The debris-covered class depends on the RGI 7.0 outlines, which date from
+  about 2000. Ice that has disappeared at a glacier terminus since then is
+  still counted, and debris-covered ice outside the outlines is missed.
+- A persistence threshold cannot separate perennial snow from glacier ice.
+- The epochs before 1998 have few scenes and cover the glaciers only in part.
+- All settings and their reasons are given in `docs/Scientific_Background.md`
+  and in the user guide. The areas of the inventory and their uncertainty are
+  reported in the accompanying paper.
 
 ## Citation
 
@@ -71,8 +86,8 @@ accompanying paper (reference will be added upon publication) and this
 repository:
 
 > Nasimi, M. N. (2026). *HKPM Glacier Inventory — Google Earth Engine
-> script* (Version 1.0.0) [Computer software].
-> https://github.com/mnajimnasimi/HKPM-Glacier-Inventory-GEE
+> script* (Version 1.0.1) [Computer software].
+> https://github.com/mnajimnasimi/HKPM-Glacier-Inventory-GEE, https://doi.org/10.5281/zenodo.21966643
 
 A machine-readable citation is provided in [`CITATION.cff`](CITATION.cff).
 
